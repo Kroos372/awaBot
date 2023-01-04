@@ -1,4 +1,4 @@
-import json, time, random
+import json, time
 import numpy as np
 
 # 莫名其妙的编码问题，很让我头疼啊~
@@ -32,20 +32,22 @@ PREFIX = ";"
 
 # [0涩图开关, 1报时开关, 2休眠开关, 3当前日期]
 sysList = [False, True, False, nowDay()]
-# [0象棋开关, 1轮到谁, 2结束游戏的人, 3[红方, 黑方]]
-CCList = [False, None, None, [None, None]]
+# [0象棋开关, 1轮到谁, 2结束游戏的人, 3[红方, 黑方], 4当前棋盘]
+CCList = [False, None, None, [None, None], []]
 # [0真心话开关, 1{昵称：摇出的数字}, 2[玩游戏中的hash]]
 truthList = [False, {}, []]
 # [0炸弹数字, 1[在玩的人], 2轮到序号, 3初始最小值, 4初始最大值, 5是否在玩, 6本轮最小值, 7本轮最大值]
 bombs = [0, [], 0, 1, 1000, False, 1, 1000]
 # [0扑克开关, 1{在玩的人:[拥有的牌]}, 2轮到序号, 3当前牌堆, 4底牌, 5地主, 6是否在叫牌阶段, 7[玩家名称], 8谁拿地主牌, 9{叫牌人:叫几分}, 10本轮第一出牌的序号, 11上家的牌]
 pokers = [False, {}, 0, [], [], None, False, [], None, {}, None, None]
+# [0五子棋开关, 1轮到序号, 2[黑方, 白方], 3]
+# gobang = [False, 0, []]
 # 在这的变量和在sysList里的区别是，在这里的变量都不需要直接改变，只在原来基础上增删；
 # 在sysList中的则需要，例如游戏中的hash和摇出的数字都会在结算中清空，储存在一个列表中就避免了各种莫名其妙的作用域问题
 allMsg, afk, leftMsg, ignored, banned = [], {}, {}, userData["ignored"], userData["banned"]
 userHash, userTrip, userColor, engUsers = {}, {}, {}, userData["engUsers"]
 blackList, blackName, whiteList = userData["blackList"], userData["blackName"], userData["whiteList"]
-
+meaningful = []
 #常量
 channel, nick, passwd, color = info["channel"], info["nick"], info["passwd"], info["color"],
 owner, called = info["owner"], info["called"]
@@ -54,6 +56,7 @@ OWNER = info["ownerTrip"]
 
 CLOLUMN, LETTERS = ["| \\ |1|2|3|4|5|6|7|8|9|", "|-|-|-|-|-|-|-|-|-|-|"], list("ABCDEFGHIJ")
 RED, BLACK = ["==车==", "==马==", "==相==", "==士==", "==帥==", "==兵==", "==炮=="], ["車", "馬", "象", "仕", "將", "卒", "砲"]
+# WHITE, GRAY = "O", "X"
 CARDS = ['3', '4', '5', '6', '7', '8', '9', 'H', 'J', 'Q', 'K', 'A', '2']
 JOKERS = ["小", "大"]
 SORT = dict(zip(CARDS+JOKERS, range(15)))
@@ -121,7 +124,7 @@ POKERRULE = "\n".join([
     "剩余的就将这两种组合，不同组别用空格隔开即可，例如==p 4-5*3 7 9== ==p 7*4 99 HH==……",
     "玩得开心~"
 ])
-INIT=np.array([
+CINIT=np.array([
     [RED[0], RED[1], RED[2], RED[3], RED[4], RED[3],RED[2], RED[1], RED[0]],
     ["&ensp;"]*9,
     ["&ensp;", RED[6], "&ensp;", "&ensp;", "&ensp;", "&ensp;", "&ensp;", RED[6], "&ensp;"],
@@ -134,7 +137,8 @@ INIT=np.array([
     ["&ensp;"]*9,
     [BLACK[0], BLACK[1], BLACK[2], BLACK[3], BLACK[4], BLACK[3], BLACK[2], BLACK[1], BLACK[0]],
 ])
-CBL = [None]
+# GINIT = np.array([["&ensp;"]*15]*15)
+
 MENUMIN = "\n".join([
     "菜单：",
     "普通用户：",
@@ -322,14 +326,14 @@ LINE = {
     # 纪念零姬……
     "0.0": ["0.0.0"],
     "贴贴": ["贴贴sender~"],
-    "#精神状态": ["ᕕ( ᐛ )ᕗ", "良好，谢谢"],
+    "#精神状态": ["ᕕ( ᐛ )ᕗ", "良好，谢谢", "🤔", "哇啊啊啊！"],
     "engvers": ["To be continue..."],
-    "6": ["6", "9", "36"],
-    "？": ["？", "不对劲", "你在疑惑什么"],
+    "6": ["6", "9", "36", "还得是你", "陆"],
+    "？": ["？", "不对劲", "你在疑惑什么", "¿", "..."],
     "我是傻逼": RANDLIS[6],
     "hi": RANDLIS[9],
 
-    "涩图": lambda: colorPic if sysList[0] else "害，别惦记你那涩涩了。",
+    "涩图": lambda: colorPic() if sysList[0] else "害，别惦记你那涩涩了。",
     "listwh": lambda: f"当前白名单识别码：{'，'.join(whiteList)}",
     "listbn": lambda: f"当前黑名单昵称：{'，'.join(blackName)}",
     "listbl": lambda: f"当前黑名单hash：{'，'.join(blackList)}",
@@ -344,7 +348,7 @@ INLINE = {
     "有人吗": RANDLIS[7],
     "拜拜|bye": RANDLIS[8],
     "无聊": RANDLIS[4],
-    "awa": ["qaq", "qwq", "qwp", "ovo", ";a;", "TAT", "QAQ", "\\>_<", "@w@"],
+    "awa": ["qaq", "qwq", "qwp", "ovo", ";a;", "TAT", "QAQ", "\\>_<", "@w@", "uwu"],
 }
 
 # 仿rate-limiter
@@ -359,7 +363,7 @@ def search(name: str)->dict:
         record = records[name] = {"time": now(), "score": 0, "warned": False}
     return record
 # 监测与增加刷屏分（？）
-def frisk(name: str, delta: int):
+def frisk(name: str, delta: float):
     record = search(name)
     score = record["score"]
     # 使分数随时间衰减，半衰期(与上次发言相差halflife秒时)为0.5

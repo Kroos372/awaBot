@@ -1,6 +1,6 @@
 #coding=utf-8
 from const import *
-import websocket, ssl, requests, re, threading, traceback, sys, os
+import websocket, ssl, requests, re, threading, traceback, sys, os, random
 
 # 存入记忆中！
 def writeJson(filename, datas):
@@ -112,7 +112,6 @@ def reply(sender: str, msg: str) -> str:
     return cont.json()["content"].replace("菲菲", called).replace("{br}", "\n")\
     .replace("help", "==@bot名 help==，==菜单==或==@bot名 帮助==")
 # 扑克有关
-
 def landonwer(chat, sender: str): 
     pokers[5] = sender
     pokers[6] = False
@@ -185,7 +184,7 @@ def pkReply(chat, msg: str, sender: str):
                         for _ in range(int(msg[-1])): senderCards.remove(msg[0])
                     else: return chat.sendMsg("牌数不足！")
                 # 顺子
-                elif re.match(r"^[3-9AHJQK]\-[3-9AHJQK]$", msg):
+                elif re.match(r"^[3-9AHJQK]-[3-9AHJQK]$", msg):
                     start, end = CARDS.index(msg[0]), CARDS.index(msg[-1])
                     if (end-start) >= 4:
                         for i in CARDS[start:end+1]:
@@ -207,7 +206,7 @@ def pkReply(chat, msg: str, sender: str):
                         for i in range(mult): senderCards.remove(msg[-1])
                     else: return chat.sendMsg("牌数不足！")
                 # 双顺、三顺
-                elif re.match(r"^[3-9AHJQK]\-[3-9AHJQK]\*[23]$", msg):
+                elif re.match(r"^[3-9AHJQK]-[3-9AHJQK]\*[23]$", msg):
                     start, end, mult = CARDS.index(msg[0]), CARDS.index(msg[2]), int(msg[-1])
                     if (end-start) >= (4-mult):
                         for i in CARDS[start:end+1]:
@@ -224,7 +223,7 @@ def pkReply(chat, msg: str, sender: str):
                         for i in "".join(array): senderCards.remove(i)
                     else: return chat.sendMsg("牌不够，;;;")
                 # 飞机
-                elif re.match(r"^[3-9AHJQK]\-[3-9AHJQK]\*3 $", msg[:6]):
+                elif re.match(r"^[3-9AHJQK]-[3-9AHJQK]\*3 $", msg[:6]):
                     start, end = CARDS.index(msg[0]), CARDS.index(msg[2])
                     if (end-start) < 1: return chat.sendMsg("牌数不够;")
                     else:
@@ -259,7 +258,7 @@ def pkReply(chat, msg: str, sender: str):
                         for _ in range(int(msg[-1])): senderCards.remove(msg[0])
                     else: return chat.sendMsg("牌数不足！")
                 # 顺子
-                elif re.match(r"^.\-.$", last) and re.match(r"^[3-9AHJQK]\-[3-9AHJQK]$", msg):
+                elif re.match(r"^.-.$", last) and re.match(r"^[3-9AHJQK]-[3-9AHJQK]$", msg):
                     start, end = CARDS.index(msg[0]), CARDS.index(msg[-1])
                     lstart, lend = CARDS.index(last[0]), CARDS.index(last[-1])
                     if (end-start) != (lend-lstart): return chat.sendMsg("牌数不符！")
@@ -283,7 +282,7 @@ def pkReply(chat, msg: str, sender: str):
                     for i in range(int(msg[2])): senderCards.remove(msg[0])
                     for i in range(mult): senderCards.remove(msg[-1])
                 # 双顺、三顺
-                elif re.match(r".\-.\*.$", last) and re.match(rf"^[3-9AHJQK]\-[3-9AHJQK]\*{last[-1]}$", msg):
+                elif re.match(r".-.\*.$", last) and re.match(rf"^[3-9AHJQK]-[3-9AHJQK]\*{last[-1]}$", msg):
                     start, end, mult = CARDS.index(msg[0]), CARDS.index(msg[2]), int(msg[-1])
                     lstart, lend = CARDS.index(last[0]), CARDS.index(last[2])
                     if (end-start) != (lend-lstart): return chat.sendMsg("牌数不符！")
@@ -304,7 +303,7 @@ def pkReply(chat, msg: str, sender: str):
                         for i in "".join(array): senderCards.remove(i)
                     else: return chat.sendMsg("牌不够，;;;")
                 # 飞机
-                elif re.match(r"^.\-.\*3 $", last[:6]) and re.match(r"^[3-9AHJQK]\-[3-9AHJQK]\*3 $", msg[:6]):
+                elif re.match(r"^.-.\*3 $", last[:6]) and re.match(r"^[3-9AHJQK]-[3-9AHJQK]\*3 $", msg[:6]):
                     start, end = CARDS.index(msg[0]), CARDS.index(msg[2])
                     lstart, lend = CARDS.index(last[0]), CARDS.index(last[2])
                     if (end-start) != (lend-lstart): return chat.sendMsg("牌数不符！")
@@ -877,8 +876,9 @@ def whispered(chat, from_: str, msg: str, result: dict):
             elif command == "hasn ": chat.sendMsg(pre + hashByName(namePure(msg[6:]), True))
     else: chat.sendMsg(pre + reply(from_, msg))
 def emote(chat, sender: str, msg: str):
-    logs(msg)
-    allMsg.append(msg)
+    full = f"{sender}：{' '.join(msg.split(' ')[1:])}"
+    logs(full)
+    allMsg.append(full)
     if not userTrip[sender] in whiteList:
         hash_ = userHash[sender]
         frisked = frisk(hash_, 0.9+len(msg)/256)
@@ -906,36 +906,36 @@ class HackChat:
         encoded = json.dumps(packet)
         self.ws.send(encoded)
     def move(self, old, new, chess):
-        if CBL[0][new[0], new[1]] in [RED[4], BLACK[4]]:
+        if CCList[4][new[0], new[1]] in [RED[4], BLACK[4]]:
             self.sendMsg(f"@{CCList[1]} 获胜！恭喜！")
             return self._endGame()
         now = CCList[1]
         CCList[1] = CCList[3][0] if CCList[1] == CCList[3][1] else CCList[3][1]
-        for i in CBL[0][:,3:6]:
+        for i in CCList[4][:,3:6]:
             if (BLACK[4] in i) and (RED[4] in i) and set(i[list(i).index(RED[4])+1:list(i).index(BLACK[4])]) == {"&ensp;"}:
                 self.sendMsg(f"@{CCList[1]} 获胜！恭喜！")
                 return self._endGame()
-        CBL[0][old[0], old[1]] = "&ensp;"
-        CBL[0][new[0], new[1]] = chess
+        CCList[4][old[0], old[1]] = "&ensp;"
+        CCList[4][new[0], new[1]] = chess
         self._sendBoard()
         self.sendMsg(f"{now}挪动了{chr(old[0]+65)}{old[1]+1}的{chess}，轮到@{CCList[1]}")
     def _endGame(self):
         CCList[1] = None
         CCList[3] = [None, None]
         CCList[0] = False
-        CBL[0] = INIT.copy()
+        CCList[4] = INIT.copy()
     def _sendBoard(self):
-        mae = CLOLUMN+[f"|{n}|"+ "|".join(i) +"|" for i, n in zip(CBL[0], LETTERS)]
+        mae = CLOLUMN+[f"|{n}|"+ "|".join(i) +"|" for i, n in zip(CCList[4], LETTERS)]
         self.sendMsg("\n".join(mae))
     def CCreply(self, sender: str, msg: str):
         res = re.search(r"^([ABCDEFGHIJ])([123456789]) ([ABCDEFGHIJ])([123456789])$", msg.upper())
         if CCList[3][1] and sender == CCList[1] and res:
             res = res.groups()
             old, new = [ord(res[0])-65, int(res[1])-1], [ord(res[2])-65, int(res[3])-1]
-            goingChess, moveChess = CBL[0][new[0], new[1]], CBL[0][old[0], old[1]]
+            goingChess, moveChess = CCList[4][new[0], new[1]], CCList[4][old[0], old[1]]
             if moveChess != "&ensp;":
-                use = CBL[0][min(old[0], new[0])+1:max(old[0], new[0]), old[1]]
-                use2 = CBL[0][old[0], min(old[1], new[1])+1:max(old[1], new[1])]
+                use = CCList[4][min(old[0], new[0])+1:max(old[0], new[0]), old[1]]
+                use2 = CCList[4][old[0], min(old[1], new[1])+1:max(old[1], new[1])]
                 if (not CCList[3].index(sender) and not goingChess in RED and moveChess in RED) or (CCList[3].index(sender) and not goingChess in BLACK and moveChess in BLACK):                    
                     if moveChess == RED[5] and (old[0] > 4 and abs(old[1] - new[1]) == 1 and old[0] == new[0] or new == [old[0]+1, old[1]]):
                             self.move(old, new, RED[5])
@@ -951,11 +951,11 @@ class HackChat:
                         else: self.sendMsg("不符合行棋规则")
                     elif (moveChess in [RED[0], BLACK[0]]) and ((new[0] == old[0] and not len(use2[use2!="&ensp;"])) or ((new[1] == old[1]) and not len(use[use!="&ensp;"]))):
                             self.move(old, new, moveChess)
-                    elif (moveChess in [RED[1], BLACK[1]]) and ((abs(old[0]-new[0]) == 2 and abs(old[1]-new[1]) == 1 and CBL[0][int(old[0]-(old[0]-new[0])/2), old[1]] == "&ensp;") or (abs(old[1]-new[1]) == 2 and abs(old[0]-new[0]) == 1 and CBL[0][old[0], int(old[1]-(old[1]-new[1])/2)] == "&ensp;")):
+                    elif (moveChess in [RED[1], BLACK[1]]) and ((abs(old[0]-new[0]) == 2 and abs(old[1]-new[1]) == 1 and CCList[4][int(old[0]-(old[0]-new[0])/2), old[1]] == "&ensp;") or (abs(old[1]-new[1]) == 2 and abs(old[0]-new[0]) == 1 and CCList[4][old[0], int(old[1]-(old[1]-new[1])/2)] == "&ensp;")):
                             self.move(old, new, moveChess)
-                    elif moveChess == RED[2] and (abs(old[0]-new[0]) == 2 and abs(old[1]-new[1]) == 2 and CBL[0][int(old[0]-(old[0]-new[0])/2), int(old[1]+(old[1]-new[1])/2)] == "&ensp;" and new[0] < 5) :
+                    elif moveChess == RED[2] and (abs(old[0]-new[0]) == 2 and abs(old[1]-new[1]) == 2 and CCList[4][int(old[0]-(old[0]-new[0])/2), int(old[1]+(old[1]-new[1])/2)] == "&ensp;" and new[0] < 5) :
                             self.move(old, new, RED[2])
-                    elif moveChess == BLACK[2] and (abs(old[0]-new[0]) == 2 and abs(old[1]-new[1]) == 2 and CBL[0][int(old[0]-(old[0]-new[0])/2), int(old[1]+(old[1]-new[1])/2)] == "&ensp;" and new[0] > 4) :
+                    elif moveChess == BLACK[2] and (abs(old[0]-new[0]) == 2 and abs(old[1]-new[1]) == 2 and CCList[4][int(old[0]-(old[0]-new[0])/2), int(old[1]+(old[1]-new[1])/2)] == "&ensp;" and new[0] > 4) :
                             self.move(old, new, BLACK[2])
                     elif moveChess == RED[4] and (new[0] in [0, 1, 2]) and (new[1] in [3, 4, 5]) and ((old[0]==new[0] and abs(old[1]-new[1])==1) or (old[1]==new[1] and abs(old[0]-new[0])==1)):
                             self.move(old, new, RED[4])
@@ -971,7 +971,7 @@ class HackChat:
         elif msg == "加入游戏":
             if not CCList[3][0]:
                 CCList[3][0] = sender
-                CBL[0] = INIT.copy()
+                CCList[4] = INIT.copy()
                 self.sendMsg("游戏创建好了，快找人来加入吧！")
             elif sender == CCList[3][0]:
                 self.sendMsg("你已经，加入过了哦~")
