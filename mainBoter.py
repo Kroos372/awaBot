@@ -1,6 +1,6 @@
 #coding=utf-8
 from const import *
-import websocket, ssl, requests, re, threading, traceback, sys, os, random
+import websocket, ssl, requests, re, threading, traceback, sys, os, random, datetime
 
 # 存入记忆中！
 def writeJson(filename, datas):
@@ -66,8 +66,7 @@ def hashByName(name: str, now: bool=False) -> str:
 def colorPic() -> str:
     setu = requests.get("https://api.lolicon.app/setu/v2").json()["data"][0]
     # 过滤离谱关键词
-    tags = [i for i in setu["tags"] if not "乳" in i and not "魅" in i and\
-    not "内" in i and not "尻" in i and not "屁" in i and not "胸" in i]
+    tags = [i for i in setu["tags"] if not re.search("[乳魅内尻屁胸]", i)]
     url = setu["urls"]["original"]
     title = setu["title"]
     author = setu["author"]
@@ -103,7 +102,7 @@ def bombRule(chat, num=None):
 # 我该如何回复大家呢？
 def reply(sender: str, msg: str) -> str:
     rans = random.randint(1, 10)
-    if rans > 4:
+    if rans > 3:
         for k, v in answer.items():
             if re.search(k, msg):
                 if v: return "&#8205;" + random.choice(v).replace("sender", sender).replace("called", called)
@@ -194,7 +193,7 @@ def pkReply(chat, msg: str, sender: str):
                             senderCards.remove(i)
                     else: return chat.sendMsg("顺子最少五个！")
                 # 三带一、三带二
-                elif re.match(r"^[2-9AHJQK]\*3 [2-9AHJQK]{1,2}$", msg):
+                elif re.match(r"^[2-9AHJQK]\*3 [2-9AHJQK大小]{1,2}$", msg):
                     mult = len(msg.split()[1])
                     if msg[-1] != msg[0]:
                         condition = senderCards.count(msg[0])>=int(msg[2]) and senderCards.count(msg[-1])>=mult
@@ -216,7 +215,7 @@ def pkReply(chat, msg: str, sender: str):
                             for _ in range(mult): senderCards.remove(i)
                     else: return chat.sendMsg("牌数不够，三顺最少两个，双顺最少三个;")
                 # 四带二
-                elif re.match(r"([2-9AHJQK])\*4 (?!.*?\1)(?:([2-9AHJQK])\2 ([2-9AHJQK])\3|[2-9AHJQK] [2-9AHJQK])$", msg):
+                elif re.match(r"([2-9AHJQK])\*4 (?!.*?\1)(?:([2-9AHJQK])\2 ([2-9AHJQK])\3|[2-9AHJQK大小] [2-9AHJQK大小])$", msg):
                     array = msg.split()[1:]
                     if senderCards.count(msg[0])==4 and senderCards.count(array[0])>=len(array[0]) and senderCards.count(array[1])>=len(array[1]):
                         for _ in range(4): senderCards.remove(msg[0])
@@ -342,17 +341,25 @@ def pkReply(chat, msg: str, sender: str):
                 return endPoker()
             elif len(senderCards) < 4: chat.sendMsg(f"{sender}只剩{len(senderCards)}张牌了！")
 # 日志日志
-def logs(text: str):
-    with open(f"log/{sysList[3]}.txt", "a+", encoding="utf8") as f:
-        f.write(text+"\n")
+def logs(text: str, nick: str, hash_=False, trip=False):
+    if not hash_: hash_ = "null"
+    if not trip: trip = "null"
+    data = {
+        "text": text,
+        "nick": nick,
+        "hash": hash_,
+        "trip": trip,
+        "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "token": "",
+    }
+    requests.post("https://yokatta.darknights.repl.co/lounge/", data=data)
 def msgGot(chat, msg: str, sender: str, senderTrip: str):
     rans = random.randint(1, 134)
     this_turn = f"{sender}：{msg[:1024]}"
     command = msg[:6]
-    logs(this_turn)
-    # print(this_turn)
 
-    if sender == nick: return
+    if sender in [nick, "ModBot"]: return
+    logs(msg, sender, userHash[sender], senderTrip)
 
     if not senderTrip in whiteList:
         hash_ = userHash[sender]
@@ -409,7 +416,7 @@ def msgGot(chat, msg: str, sender: str, senderTrip: str):
                 chat.sendMsg(f"@{sender}, {lis[1]}将会在加入时收到你的留言！~~如果那时我还在的话~~")
         elif command == "peep ":
             try:
-                if msg[6:] == "0": raise ValueError
+                if msg[6] == "0": raise ValueError
                 array = msg.split(" ")
                 if len(array)==2: 
                     want_peep = int(array[1])
@@ -800,7 +807,7 @@ def join(chat, joiner: str, color: str, result: dict):
     dic = userData["welText"]
     msg = "&#8205;"+dic[trip] if trip in dic else random.choice(RANDLIS[3]).replace("joiner", joiner)
     userColor[joiner], userHash[joiner], userTrip[joiner] = color, hash_, trip
-    logs(f"{joiner}加入")
+    logs(f"{joiner}加入", "*")
     names = data.get(hash_)
     if names:
         if not joiner in names:
@@ -846,7 +853,7 @@ def changeColor(chat, result:dict):
     userColor[result["nick"]] = result["color"]
 def leave(chat, leaver: str):
     chat.onlineUsers.remove(leaver)
-    logs(f"{leaver}离开")
+    logs(f"{leaver}离开", "*")
     del userColor[leaver]
     del userHash[leaver]
     del userTrip[leaver]
@@ -876,8 +883,8 @@ def whispered(chat, from_: str, msg: str, result: dict):
             elif command == "hasn ": chat.sendMsg(pre + hashByName(namePure(msg[6:]), True))
     else: chat.sendMsg(pre + reply(from_, msg))
 def emote(chat, sender: str, msg: str):
-    full = f"{sender}：{' '.join(msg.split(' ')[1:])}"
-    logs(full)
+    full = f"*：{msg}"
+    logs(msg, "*", userHash[sender], userTrip[sender])
     allMsg.append(full)
     if not userTrip[sender] in whiteList:
         hash_ = userHash[sender]
@@ -923,7 +930,7 @@ class HackChat:
         CCList[1] = None
         CCList[3] = [None, None]
         CCList[0] = False
-        CCList[4] = INIT.copy()
+        CCList[4] = CINIT.copy()
     def _sendBoard(self):
         mae = CLOLUMN+[f"|{n}|"+ "|".join(i) +"|" for i, n in zip(CCList[4], LETTERS)]
         self.sendMsg("\n".join(mae))
@@ -971,7 +978,7 @@ class HackChat:
         elif msg == "加入游戏":
             if not CCList[3][0]:
                 CCList[3][0] = sender
-                CCList[4] = INIT.copy()
+                CCList[4] = CINIT.copy()
                 self.sendMsg("游戏创建好了，快找人来加入吧！")
             elif sender == CCList[3][0]:
                 self.sendMsg("你已经，加入过了哦~")
