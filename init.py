@@ -14,8 +14,6 @@ if __name__ == '__main__':
         whiteList = userData["whiteList"]
     if not owner in whiteList:
         whiteList.append(owner)
-    if not os.path.exists("log"):
-        os.mkdir("log")
     if not os.path.exists("traceback"):
         os.mkdir("traceback")
     with open("userData.json", "w", encoding="utf8") as f:

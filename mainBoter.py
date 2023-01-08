@@ -169,7 +169,7 @@ def pkReply(chat, msg: str, sender: str):
             else:
                 chat.sendMsg(f"{sender}跳过，轮到@{pokers[7][pokers[2]]} 。")
         elif msg == "CHECK":
-            chat.sendMsg(f"/w {sender} 以下是您的牌：{' '.join(pokers[1][sender])}")
+            chat.sendMsg(f"/w {sender} 上家出的牌是：{pokers[11]}\n以下是您的牌：{' '.join(pokers[1][sender])}")
         else:
             senderCards = pokers[1][sender]
             # 本轮第一发
@@ -340,26 +340,13 @@ def pkReply(chat, msg: str, sender: str):
                 else: chat.sendMsg("农民获胜！")
                 return endPoker()
             elif len(senderCards) < 4: chat.sendMsg(f"{sender}只剩{len(senderCards)}张牌了！")
-# 日志日志
-def logs(text: str, nick: str, hash_=False, trip=False):
-    if not hash_: hash_ = "null"
-    if not trip: trip = "null"
-    data = {
-        "text": text,
-        "nick": nick,
-        "hash": hash_,
-        "trip": trip,
-        "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "token": "",
-    }
-    requests.post("https://yokatta.darknights.repl.co/lounge/", data=data)
+
 def msgGot(chat, msg: str, sender: str, senderTrip: str):
     rans = random.randint(1, 134)
     this_turn = f"{sender}：{msg[:1024]}"
     command = msg[:6]
 
     if sender in [nick, "ModBot"]: return
-    logs(msg, sender, userHash[sender], senderTrip)
 
     if not senderTrip in whiteList:
         hash_ = userHash[sender]
@@ -807,7 +794,6 @@ def join(chat, joiner: str, color: str, result: dict):
     dic = userData["welText"]
     msg = "&#8205;"+dic[trip] if trip in dic else random.choice(RANDLIS[3]).replace("joiner", joiner)
     userColor[joiner], userHash[joiner], userTrip[joiner] = color, hash_, trip
-    logs(f"{joiner}加入", "*")
     names = data.get(hash_)
     if names:
         if not joiner in names:
@@ -853,7 +839,6 @@ def changeColor(chat, result:dict):
     userColor[result["nick"]] = result["color"]
 def leave(chat, leaver: str):
     chat.onlineUsers.remove(leaver)
-    logs(f"{leaver}离开", "*")
     del userColor[leaver]
     del userHash[leaver]
     del userTrip[leaver]
@@ -884,7 +869,6 @@ def whispered(chat, from_: str, msg: str, result: dict):
     else: chat.sendMsg(pre + reply(from_, msg))
 def emote(chat, sender: str, msg: str):
     full = f"*：{msg}"
-    logs(msg, "*", userHash[sender], userTrip[sender])
     allMsg.append(full)
     if not userTrip[sender] in whiteList:
         hash_ = userHash[sender]
