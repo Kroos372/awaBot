@@ -1152,7 +1152,6 @@ class HackChat:
                 rnick = result.get("nick")
 
                 if (not sysList[2]) or (sysList[2] and result.get("trip") in whiteList): 
-                    # print(result)
                     # 接收到消息！
                     if cmd == "chat":
                         msgGot(self, result["text"], rnick, result.get("trip"))
@@ -1161,7 +1160,7 @@ class HackChat:
                     # 有人离开……
                     elif cmd == "onlineRemove": leave(self, rnick)
                     # 收到私信！
-                    elif result.get("type") == "whisper" and not isinstance(1, int):
+                    elif result.get("type") == "whisper" and not isinstance(result["from"], int):
                         whispered(self, result["from"], "".join(result["text"].split(":")[1:]), result)
                     # 更换颜色（色色达咩）
                     elif cmd == "updateUser": changeColor(self, result)
