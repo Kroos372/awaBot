@@ -340,7 +340,25 @@ def pkReply(chat, msg: str, sender: str):
                 else: chat.sendMsg("农民获胜！")
                 return endPoker()
             elif len(senderCards) < 4: chat.sendMsg(f"{sender}只剩{len(senderCards)}张牌了！")
-
+# UNO
+def initialize_card():
+    unos[3] = []
+    for j in "红黄蓝绿":
+        for i in range(1, 10):
+            unos[3].append(j + str(i))
+            unos[3].append(j + str(i))
+        for i in ["+2", "禁", "转向"]:
+            unos[3].append(j + i)
+            unos[3].append(j + i)
+        unos[3].append(j + "0")
+    for i in range(4):
+        unos[3].append("+4")
+        unos[3].append("变色")
+    return unos[3]
+def endUno():
+    unos[0] = False
+    unos[1] = []
+    unos[2] = []
 def msgGot(chat, msg: str, sender: str, senderTrip: str):
     rans = random.randint(1, 134)
     this_turn = f"{sender}：{msg[:1024]}"
@@ -566,6 +584,106 @@ def msgGot(chat, msg: str, sender: str, senderTrip: str):
             else: chat.sendMsg("加入成功，快再找些人吧(☆▽☆)")
     elif msg == "letter":
         chat.sendMsg(f"/w {sender} 一封信\n{getLetter()}")
+    elif msg == "uno":
+        if unos[0]:
+            chat.sendMsg("游戏已经开始了，等下一轮吧。")
+        elif sender in unos[1]:
+            chat.sendMsg("你已经加入了！")
+        else:
+            unos[1].append(sender)
+            chat.sendMsg(f"加入成功，现在有{len(unos[1])}人。")
+    elif msg == "开始u" and not unos[0]:
+        if len(unos[1]) >= 2:
+            unos[0] = True
+            unos[3] = initialize_card()
+            for i in range(len(unos[1])):
+                playerCard = []
+                for j in range(7):
+                    addCard = random.choice(unos[3])
+                    playerCard.append(addCard)
+                    unos[3].remove(addCard)
+                unos[2].append(playerCard)
+                chat.whisper(unos[1][i], f"这是你的牌：{playerCard}")
+            unos[4] = random.choice(unos[1])
+            while unos[5] == "+4":
+                unos[5] = random.choice(unos[3])
+            unos[3].remove(unos[5])
+            chat.sendMsg(f"牌发完啦，{UNORULE}\n初始牌是=={unos[5]}==，请`{unos[4]}`先出！")
+        else:
+            chat.sendMsg("人数不够！")
+    elif msg == "结束u" and sender in unos[1] and unos[0]:
+        endUno()
+        chat.sendMsg("结束了...")
+    elif msg[:2] == "u " and sender == unos[4]:
+        msgList = msg.split(" ")
+        card = msgList[1]
+        id_ = unos[1].index(sender)
+        nextid = (id_ + 1) % len(unos[1])
+        next2id_ = (id_ + 2) % len(unos[1])
+        if card == "check":
+            return chat.whisper(sender, f"现在牌面上的牌是=={unos[5]}==，这是你的牌：{'，'.join(unos[2][id_])}")
+        elif card == ".":
+            unos[4] = unos[1][nextid]
+            addCard = random.choice(unos[3])
+            unos[2][id_].append(addCard)
+            unos[3].remove(addCard)
+            chat.sendMsg(f"`{sender}`补了一张牌，轮到`{unos[4]}`！")
+            return chat.whisper(sender, f"你新增了1张牌，这是你现在的牌：{'，'.join(unos[2][id_])}。")
+        elif not card in unos[2][id_]:
+            return chat.sendMsg("你没有那张牌！")
+        elif card == "+4":
+            for i in unos[2][id_]:
+                if i[0] == unos[5][0]:
+                    return chat.sendMsg("不符合规则！")
+            if len(msgList) < 3:
+                return chat.sendMsg("缺少参数！")
+            if not msgList[2] in "红黄蓝绿":
+                return chat.sendMsg("参数错误！")
+            unos[5] = msgList[2] + "?"
+            unos[4] = unos[1][next2id_]
+            for i in range(4):
+                addCard = random.choice(unos[3])
+                unos[2][nextid].append(addCard)
+                unos[3].remove(addCard)
+            chat.sendMsg(f"`{sender}`出了+4（王牌），`{unos[1][nextid]}`加四张，颜色变为=={msgList[2]}==，轮到`{unos[4]}`！")
+            chat.whisper(unos[1][nextid], f"你新增了4张牌，这是你现在的牌：{'，'.join(unos[2][nextid])}。")
+        elif card == "变色":
+            if len(msgList) < 3:
+                return chat.sendMsg("缺少参数！")
+            if msgList[2] not in "红黄蓝绿":
+                return chat.sendMsg("参数错误！")
+            unos[4] = unos[1][nextid]
+            unos[5] = msgList[2] + "?"
+            chat.sendMsg(f"`{sender}`出了变色牌，颜色变为=={msgList[2]}==，轮到`{unos[4]}`！")
+        elif card[0] == unos[5][0] or card[1:] == unos[5][1:] or unos[5] == "变色":
+            unos[5] = card
+            if card[1:] == "禁":
+                unos[4] = unos[1][next2id_]
+                chat.sendMsg(f"`{sender}`出了{card}，`{unos[1][nextid]}`跳过1轮，轮到`{unos[4]}`！")
+            elif card[1:] == "+2":
+                unos[4] = unos[1][next2id_]
+                for i in range(2):
+                    addCard = random.choice(unos[3])
+                    unos[2][nextid].append(addCard)
+                    unos[3].remove(addCard)
+                chat.sendMsg(f"`{sender}`出了=={card}==，`{unos[1][nextid]}`加2张，轮到`{unos[4]}`！")
+                chat.whisper(unos[1][nextid], f"你新增了2张牌，这是你现在的牌：{'，'.join(unos[2][nextid])}。")
+            elif card[1:] == "转向":
+                unos[1].reverse()
+                unos[2].reverse()
+                unos[4] = unos[1][(-id_)%len(unos[1])]
+                chat.sendMsg(f"`{sender}`出了{card}，==顺序转换==，轮到`{unos[4]}`！")
+            else:
+                unos[4] = unos[1][nextid]
+                chat.sendMsg(f"`{sender}`出了=={card}==，轮到`{unos[4]}`！")
+        elif not card in ["+4", "变色"]:
+            return chat.sendMsg("不符合规则！")
+        unos[2][id_].remove(card)
+        if len(unos[2][id_]) == 1:
+            chat.sendMsg(f"`{sender}`==UNO==了！！！")
+        elif len(unos[2][id_]) == 0:
+            endUno()
+            chat.sendMsg(f"`{sender}`获胜，游戏结束。")
     elif msg == "开始b" and not bombs[5]:
         if len(bombs[1]) > 1:
             bombs[5], bombs[6], bombs[7] = True, bombs[3], bombs[4]
@@ -893,6 +1011,8 @@ class HackChat:
         self.sendMsg(f"/color {color}")
     def sendMsg(self, msg: str):
         self._sendPacket({"cmd": "chat", "text": msg,})
+    def whisper(self, to: str, msg: str):
+        self._sendPacket({"cmd": "whisper", "nick": to, "text": msg})
     def _sendPacket(self, packet:dict):
         encoded = json.dumps(packet)
         self.ws.send(encoded)
@@ -1041,7 +1161,7 @@ class HackChat:
                     # 有人离开……
                     elif cmd == "onlineRemove": leave(self, rnick)
                     # 收到私信！
-                    elif result.get("type") == "whisper" and result["text"][:3] != "You":
+                    elif result.get("type") == "whisper" and not isinstance(1, int):
                         whispered(self, result["from"], "".join(result["text"].split(":")[1:]), result)
                     # 更换颜色（色色达咩）
                     elif cmd == "updateUser": changeColor(self, result)
