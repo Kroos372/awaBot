@@ -671,7 +671,7 @@ def msgGot(chat, msg: str, sender: str, senderTrip: str):
             elif card[1:] == "转向":
                 unos[1].reverse()
                 unos[2].reverse()
-                unos[4] = unos[1][(-id_)%len(unos[1])]
+                id_ = unos[1][(-id_-1)%len(unos[1])]
                 chat.sendMsg(f"`{sender}`出了{card}，==顺序转换==，轮到`{unos[4]}`！")
             else:
                 unos[4] = unos[1][nextid]
@@ -684,6 +684,13 @@ def msgGot(chat, msg: str, sender: str, senderTrip: str):
         elif len(unos[2][id_]) == 0:
             endUno()
             chat.sendMsg(f"`{sender}`获胜，游戏结束。")
+
+        if len(unos[3]) == 0:
+            cardList = initialize_card()
+            for i in unos[2]:
+              for j in i:
+                unos[3].remove(j)
+            chat.sendMsg('牌没了，已重新洗牌。')
     elif msg == "开始b" and not bombs[5]:
         if len(bombs[1]) > 1:
             bombs[5], bombs[6], bombs[7] = True, bombs[3], bombs[4]
